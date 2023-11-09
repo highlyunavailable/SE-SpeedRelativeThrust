@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-16"?>
 <SpeedRelativeThrustConfiguration xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <LargeFalloffStartPercent>0.6</LargeFalloffStartPercent>
-  <LargeFalloffApplicationPowerScalar>2</LargeFalloffApplicationPowerScalar>
+  <LargeFalloffApplicationPowerScalar>0.5</LargeFalloffApplicationPowerScalar>
   <LargeThrustMin>0.0625</LargeThrustMin>
   <SmallFalloffStartPercent>0.7</SmallFalloffStartPercent>
-  <SmallFalloffApplicationPowerScalar>3</SmallFalloffApplicationPowerScalar>
+  <SmallFalloffApplicationPowerScalar>0.75</SmallFalloffApplicationPowerScalar>
   <SmallThrustMin>0.125</SmallThrustMin>
 </SpeedRelativeThrustConfiguration>

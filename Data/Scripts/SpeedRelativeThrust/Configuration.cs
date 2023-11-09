@@ -13,10 +13,10 @@ namespace SpeedRelativeThrust
         private const string ConfigFileName = "SpeedRelativeThrustConfig.xml";
 
         private const float DefaultLargeFalloffStartScalar = 0.6f;
-        private const float DefaultLargeFalloffApplicationPower = 2f;
+        private const float DefaultLargeFalloffApplicationPower = 0.5f;
         private const float DefaultLargeThrustMin = 0.0625f;
         private const float DefaultSmallFalloffStartScalar = 0.7f;
-        private const float DefaultSmallFalloffApplicationPower = 3f;
+        private const float DefaultSmallFalloffApplicationPower = 0.75f;
         private const float DefaultSmallThrustMin = 0.125f;
 
         // The percentage of the world max speed to start reducing thrust at for large grids (e.g. 60% or 60ms for vanilla)
@@ -89,8 +89,8 @@ namespace SpeedRelativeThrust
                 SmallFalloffStartPercent > 0 && SmallFalloffStartPercent < 1f &&
                 LargeThrustMin > 0 && LargeThrustMin < 1f &&
                 SmallThrustMin > 0 && SmallThrustMin < 1f &&
-                LargeFalloffApplicationPowerScalar >= 1f &&
-                SmallFalloffApplicationPowerScalar >= 1f;
+                LargeFalloffApplicationPowerScalar > 0f &&
+                SmallFalloffApplicationPowerScalar > 0f;
         }
 
         private void SetDefaults()
