@@ -61,7 +61,7 @@ namespace SpeedRelativeThrust
 
         public override void UpdateBeforeSimulation10()
         {
-            if (!thruster.IsFunctional)
+            if (!thruster.IsWorking)
             {
                 return;
             }
@@ -71,84 +71,80 @@ namespace SpeedRelativeThrust
                 return;
             }
 
+            float reduction;
+            if (!config.ReduceAllThrusters)
+            {
+                var velocityNormal = cubeGrid.Physics.LinearVelocity.Normalized();
+                var gridOrientation = cubeGrid.PositionComp.GetOrientation();
+                var worldThrustDirection = Vector3.TransformNormal(thrusterDirection, gridOrientation);
+                var thrusterVelocityDot = worldThrustDirection.Dot(velocityNormal);
+
+                // If you need the value in degrees of a vector, get the arccosine
+                // of the dot product (which is the angle in radians) and convert it to degrees
+
+                // MathHelper.ToDegrees((float)Math.Acos(thrusterVelocityDot));
+
+                // negative dot = opposite the direction of travel so positive means the axis of thrust points along the current vector.
+                // That means that this thruster is a stopping thruster, no need to scale it down, it can only slow the grid down.
+                // Also handle NaN values for perfectly perpendicular thrusters
+                if (thrusterVelocityDot >= 0 || !MathHelper.IsValid(thrusterVelocityDot))
+                {
+                    reduction = 0;
+                }
+                else
+                {
+                    // dot will be 0 at perpendicular and -1 at parallel, so take the absolute value and reduce the scalar
+                    // if it's off axis with travel to give side thrust authority back while preventing more forward thrust
+                    reduction = GetThrustReduction() * Math.Abs(thrusterVelocityDot);
+                }
+            }
+            else
+            {
+                reduction = GetThrustReduction();
+            }
+            thruster.ThrustMultiplier = reduction > 0 ? MathHelper.Clamp(1f - reduction, 0.01f, 1f) : 1f;
+        }
+
+        private float GetThrustReduction()
+        {
             var speed = cubeGrid.Physics.Speed;
             float speedPercent;
-            float scalar = 1f;
-
+            float scalar;
+            float reduction = 0f;
             if (cubeGrid.GridSizeEnum == MyCubeSize.Large)
             {
                 speedPercent = speed / MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed;
 
                 if (speedPercent >= config.LargeFalloffStartPercent)
                 {
-                    scalar -= (float)Math.Pow(
-                        (speedPercent - config.LargeFalloffStartPercent) / (1f - config.LargeFalloffStartPercent),
-                        config.LargeFalloffApplicationPowerScalar);
+                    var speedFactor = 1 - (speedPercent - config.LargeFalloffStartPercent) / (1 - config.LargeFalloffStartPercent);
+                    scalar = (float)(Math.Pow(0.5f, Math.Pow(speedFactor, -1f)) / 0.5f);
                     if (scalar < 0 || MathHelper.IsZero(scalar))
                     {
                         scalar = 0;
                     }
                     // Clamp the thrust multiplier between 0.01 (the minimum allowed) and 1 (100%).
-                    thruster.ThrustMultiplier = MathHelper.Clamp(MathHelper.Lerp(config.LargeThrustMin, 1, scalar), 0.01f, 1f);
-                }
-                else
-                {
-                    // Nothing to do, set it back to 100%
-                    thruster.ThrustMultiplier = 1;
+                    reduction = MathHelper.Lerp(0, 1 - config.LargeThrustMin, 1 - scalar);
                 }
             }
             else
             {
                 speedPercent = speed / MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed;
+
                 if (speedPercent >= config.SmallFalloffStartPercent)
                 {
-                    scalar -= (float)Math.Pow(
-                        (speedPercent - config.SmallFalloffStartPercent) / (1f - config.SmallFalloffStartPercent),
-                        config.SmallFalloffApplicationPowerScalar);
+                    var speedFactor = 1 - (speedPercent - config.SmallFalloffStartPercent) / (1 - config.SmallFalloffStartPercent);
+                    scalar = (float)(Math.Pow(0.5f, Math.Pow(speedFactor, -1f)) / 0.5f);
                     if (scalar < 0 || MathHelper.IsZero(scalar))
                     {
                         scalar = 0;
                     }
                     // Clamp the thrust multiplier between 0.01 (the minimum allowed) and 1 (100%).
-                    thruster.ThrustMultiplier = MathHelper.Clamp(MathHelper.Lerp(config.SmallThrustMin, 1, scalar), 0.01f, 1f);
-                }
-                else
-                {
-                    // Nothing to do, set it back to 100%
-                    thruster.ThrustMultiplier = 1;
+                    reduction = MathHelper.Lerp(0, 1 - config.SmallThrustMin, 1 - scalar);
                 }
             }
-            return;
 
-            // No need to keep going, thruster is not limited
-            if (thruster.ThrustMultiplier == 1f)
-            {
-                return;
-            }
-
-            // Additional code to scale the remaining scalar relative to how close to the axis of travel it is.
-            // Left for demo purposes, probably not needed but it's cool.
-            var velocityNormal = cubeGrid.Physics.LinearVelocity.Normalized();
-            var gridOrientation = cubeGrid.PositionComp.GetOrientation();
-            var worldThrustDirection = Vector3.TransformNormal(thrusterDirection, gridOrientation);
-            var thrusterVelocityDot = worldThrustDirection.Dot(velocityNormal);
-
-            // If you need the value in degrees of a vector, get the arccosine
-            // of the dot product (which is the angle in radians) and convert it to degrees
-
-            // MathHelper.ToDegrees((float)Math.Acos(thrusterVelocityDot));
-
-            // negative dot = opposite the direction of travel so positive means the axis of thrust points along the current vector.
-            // That means that this thruster is a stopping thruster, no need to scale it down, it can only slow the grid down.
-            // Also handle NaN values for perfectly perpendicular thrusters
-            if (thrusterVelocityDot >= 0 || !MathHelper.IsValid(thrusterVelocityDot))
-            {
-                return;
-            }
-            // dot will be 0 at perpendicular and 1 at parallel, so reduce the scalar further toward 0 based on that to give side thrusters a little more authority even as speed increases
-            thruster.ThrustMultiplier = MathHelper.Clamp(
-                MathHelper.Lerp(thruster.ThrustMultiplier, thruster.ThrustMultiplier / 2, Math.Abs(thrusterVelocityDot)),
-                0.01f, 1f);
+            return reduction;
         }
     }
 }
